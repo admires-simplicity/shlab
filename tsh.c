@@ -165,6 +165,14 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
+    static char *array[MAXARGS];
+    char **argv = array;
+    parseline(cmdline, argv);
+
+    if (builtin_cmd(argv)) {
+	    return;
+    }
+
     return;
 }
 
