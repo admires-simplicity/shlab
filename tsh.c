@@ -202,6 +202,10 @@ void Sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
 }
 
 void Sigsuspend(const sigset_t *mask) {
+  // as far as I can tell, sigsuspend has no "successful return value".
+  // sigsuspend only returns if a signal is caught, which is considered an error
+  // and causes sigsuspend to return -1. there are no other return codes.
+  // I guess I can still check the return value anyway, but it seems redundant.
   if (sigsuspend(mask) != -1) {
     unix_error("sigsuspend error");
   }
