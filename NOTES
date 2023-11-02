@@ -1,0 +1,28 @@
+finished trace01
+maybe finished trace02. I just used exit(1). not sure if this will mess with running jobs (?). I think it will leave background jobs running, which is good. Maybe I need to reap zombies first (??)
+
+
+
+when SIGCHLD is signalled, sigchld_handler will be called
+
+sigchld_handler:
+  reap all available zombie children, but don't wait for any other currently running children to terminate 
+
+parent process
+block SIGCHLD
+call fork()
+addjob
+unblock sigchld
+call waitfg	
+  if process terminates -> someone (eval? waitfg? sigchld_handler?) has to call deletejob
+
+
+child process
+execve
+deletejob ??
+ (terminate shell?)
+
+
+
+
+When I do C-c Enter, my shell crashes
