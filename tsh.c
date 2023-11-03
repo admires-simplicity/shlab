@@ -262,10 +262,11 @@ void eval(char *cmdline)
       // just not run the job instead of crashing, but I can't really do that
       // because addjob takes pid, which I don't get until after I already fork.
     }
-    //if not bg, wait for child to terminate then remove child from jobs list
 
-    if (!bg) {
-      waitfg(pid);
+    if (bg) {
+      printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+    } else {
+      waitfg(pid); // Sigsuspend until foreground job terminates
     }
 
     Sigprocmask(SIG_SETMASK, &prev_mask, NULL); //unblock SIGCHLD
