@@ -211,6 +211,14 @@ void Sigsuspend(const sigset_t *mask) {
   }
 }
 
+pid_t Waitpid(pid_t pid, int *status, int options) {
+  pid_t ret;
+  if ((ret = waitpid(pid, status, options)) < 0) {
+    unix_error("waitpid error");
+  }
+  return ret;
+}
+
 /* MY SAFE UNIX WRAPPERS */
 
 /* 
@@ -392,6 +400,8 @@ void waitfg(pid_t pid)
  * Signal handlers
  *****************/
 
+
+
 /* 
  * sigchld_handler - The kernel sends a SIGCHLD to the shell whenever
  *     a child job terminates (becomes a zombie), or stops because it
@@ -403,15 +413,26 @@ void sigchld_handler(int sig)
 {
   //not sure if it's good practice to wait on every single job, but it's
   //the only thing I can think of right now
-  for (int i = 0; i < MAXJOBS; ++i) {
+  for (int i = 0; i < MAXJOBS; ++i) { // reaps all zombies
     if (jobs[i].pid != 0) {
       int status;
-      pid_t pid = waitpid(jobs[i].pid, &status, WNOHANG); // reaps all zombies
-      if (pid) {
+      pid_t pid = Waitpid(jobs[i].pid, &status, WNOHANG | WUNTRACED);
+      if (pid && (WIFEXITED(status) || WIFSIGNALED(status))) {
         if (jobs[i].state == FG) {
           fg_terminated_pid = pid;
         }
         deletejob(jobs, pid);
+        if (WIFSIGNALED(status)) {
+          printf("Job [%d] (%d) terminated by signal %d\n", jobs[i].jid, pid, WTERMSIG(status)); // UNSAFE
+        }
+      }
+      else if (pid && WIFSTOPPED(status)) {
+        if (jobs[i].state == FG) {
+          fg_terminated_pid = pid; // maybe "fg_terminated_pid" is a bad name
+          // this happens so that waitfg can return on stopped foreground job
+        }
+        jobs[i].state = ST;
+        printf("Job [%d] (%d) stopped by signal %d\n", jobs[i].jid, pid, WSTOPSIG(status)); // UNSAFE
       }
     }
   }
@@ -445,9 +466,9 @@ void sigtstp_handler(int sig)
   if (fg_pid) {
     kill(-fg_pid, SIGTSTP); // send SIGTSTP to foreground process group 
 
-    struct job_t *job = getjobpid(jobs, fg_pid);
-    job->state = ST;
-    printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
+    // struct job_t *job = getjobpid(jobs, fg_pid);
+    // job->state = ST;
+    // printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
 
   }
 
