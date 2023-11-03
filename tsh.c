@@ -230,6 +230,10 @@ void eval(char *cmdline)
   char **argv = array;
   int bg = parseline(cmdline, argv);
 
+  if (argv[0] == NULL) { // empty line
+    return;
+  }
+
   if (builtin_cmd(argv)) {
     return;
   }
@@ -333,7 +337,11 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-  if (strncmp(argv[0], "quit", 5) == 0) {
+  if (argv[0] == NULL) {
+    return 0; // this shouldn't happen because the same check is done in eval
+  }
+
+  if (strcmp(argv[0], "quit") == 0) {
     exit(0);
   }
   return 0;     /* not a builtin command */

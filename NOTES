@@ -25,4 +25,28 @@ deletejob ??
 
 
 
+
+
+
+
+sigprocmask & sigsuspend
+
+"wait" for sigchild in main on a foreground job : sigsuspend
+ (actual waitpid happens in sigchild handler)
+ 
+ 
+wait/waitpid options
+WNOHANG -- prevent wait/waitpid from blocking. wait/waitpid returns immediately.
+return 0 is nothing terminated
+return pid if child died
+
+WUNTRACED -- causes wait/waitpid to be returned from on child stop, in addition to termination.
+
+
+
+
+
+
+
+
 When I do C-c Enter, my shell crashes
