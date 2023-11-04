@@ -1,6 +1,6 @@
 finished shell from cs:app3e shell lab. lab files are in "lab" directory. tsh.c is shell source.
 
-most code in tsh.c is code that is starter code that is given out with the lab.
+most code in tsh.c is starter code that is given out with the lab.
 
 I just had to implement eval, builtin_cmd, waitfg, do_bgfg, and the sigal handlers, and a couple helper functions.
 
