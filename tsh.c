@@ -166,7 +166,8 @@ pid_t Fork() {
 int Execve(const char *filename, char *const argv[], char *const envp[]) {
   int ret;
   if ((ret = execve(filename, argv, envp)) < 0) {
-    unix_error("execve error");
+    printf("%s: Command not found\n", argv[0]);
+    exit(1);
   }
   return ret;
 }
