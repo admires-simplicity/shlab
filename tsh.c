@@ -221,6 +221,13 @@ pid_t Waitpid(pid_t pid, int *status, int options) {
 
 /* MY SAFE UNIX WRAPPERS */
 
+/*
+ * printbg - print job jid, pid, and invoked command line
+ */
+void printbg(struct job_t *job) {
+  printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+}
+
 /* 
  * eval - Evaluate the command line that the user has just typed in
  * 
@@ -272,7 +279,8 @@ void eval(char *cmdline)
     }
 
     if (bg) {
-      printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+      //printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+      printbg(getjobpid(jobs, pid));
     } else {
       waitfg(pid); // Sigsuspend until foreground job terminates
     }
@@ -350,13 +358,18 @@ int builtin_cmd(char **argv)
     return 0; // this shouldn't happen because the same check is done in eval
   }
 
-  if (strcmp(argv[0], "quit") == 0) {
-    exit(0);
+  if (strcmp(argv[0], "fg") == 0 || strcmp(argv[0], "bg") == 0) {
+    do_bgfg(argv);
+    return 1;
   }
 
   if (strcmp(argv[0], "jobs") == 0) {
     listjobs(jobs);
     return 1;
+  }
+
+  if (strcmp(argv[0], "quit") == 0) {
+    exit(0);
   }
 
   return 0;     /* not a builtin command */
@@ -367,7 +380,47 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-  return;
+  if (argv[1] == NULL) { // no arguments
+    printf("%s command requires PID or %%jobid argument\n", argv[0]);
+    return;
+  }
+
+  char has_jid = argv[1][0] == '%';
+  char *tailptr;
+  int id = strtol(argv[1] + has_jid, &tailptr, 10); //skip '%' for jid
+  if (tailptr == argv[1] + has_jid) { // not a number
+    printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+    return;
+  }
+
+  //invalid jid/pid
+  struct job_t *job;
+  if (has_jid) {
+    job = getjobjid(jobs, id);
+    if (job == NULL) {
+      printf("%%%d: No such job\n", id);
+      return;
+    }
+  } else {
+    job = getjobpid(jobs, id);
+    if (job == NULL) {
+      printf("(%d): No such process\n", id);
+      return;
+    }
+  }
+
+  if (strcmp(argv[0], "fg") == 0) {
+    job->state = FG;
+    kill(-job->pid, SIGCONT);
+    waitfg(job->pid);
+  } else if (strcmp(argv[0], "bg") == 0) {
+    job->state = BG;
+    printbg(job);
+    kill(-job->pid, SIGCONT);
+  } else {
+    app_error("do_bgfg called without fg or bg command");
+    return;
+  }
 }
 
 /* 
@@ -375,7 +428,7 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-  //expect SIGCHLD is already blocked
+  //SIGCHLD might already be blocked
   sigset_t mask, prev_mask;
 
   Sigemptyset(&mask);
@@ -390,6 +443,9 @@ void waitfg(pid_t pid)
   while (fg_terminated_pid != pid) {
     Sigsuspend(&mask); //unblock SIGCHLD and pause atomically until some child terminates
   }
+
+  fg_terminated_pid = 0; //reset global variable so waitfg will block on reused pid
+  // e.g. if a job is stopped and continued
 
   Sigprocmask(SIG_SETMASK, &prev_mask, NULL); //restore mask
 
