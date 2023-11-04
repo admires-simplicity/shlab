@@ -417,16 +417,16 @@ void sigchld_handler(int sig)
     if (jobs[i].pid != 0) {
       int status;
       pid_t pid = Waitpid(jobs[i].pid, &status, WNOHANG | WUNTRACED);
-      if (pid && (WIFEXITED(status) || WIFSIGNALED(status))) {
+      if (pid && (WIFEXITED(status) || WIFSIGNALED(status))) { // child terminated normally or terminated in response to signal
         if (jobs[i].state == FG) {
           fg_terminated_pid = pid;
         }
-        deletejob(jobs, pid);
         if (WIFSIGNALED(status)) {
           printf("Job [%d] (%d) terminated by signal %d\n", jobs[i].jid, pid, WTERMSIG(status)); // UNSAFE
         }
+        deletejob(jobs, pid);
       }
-      else if (pid && WIFSTOPPED(status)) {
+      else if (pid && WIFSTOPPED(status)) { // child stopped
         if (jobs[i].state == FG) {
           fg_terminated_pid = pid; // maybe "fg_terminated_pid" is a bad name
           // this happens so that waitfg can return on stopped foreground job
@@ -465,11 +465,6 @@ void sigtstp_handler(int sig)
 
   if (fg_pid) {
     kill(-fg_pid, SIGTSTP); // send SIGTSTP to foreground process group 
-
-    // struct job_t *job = getjobpid(jobs, fg_pid);
-    // job->state = ST;
-    // printf("Job [%d] (%d) stopped by signal %d\n", job->jid, job->pid, sig);
-
   }
 
   return;

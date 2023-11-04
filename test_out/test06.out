@@ -3,3 +3,4 @@
 # trace06.txt - Forward SIGINT to foreground job.
 #
 tsh> ./myspin 4
+Job [0] (29734) terminated by signal 2
